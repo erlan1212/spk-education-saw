@@ -156,7 +156,7 @@ with st.sidebar:
     st.markdown(
         """
         <div class="brand-box">
-            <div class="brand-title">SPK Education</div>
+            <div class="brand-title">SPK Course Audit</div>
             <div class="brand-subtitle">Metode SAW</div>
         </div>
         """,
@@ -293,7 +293,7 @@ best_score = ranking_df.iloc[0]["Skor_SAW"] if len(ranking_df) else 0
 
 # ==== Header ====
 st.title("Sistem Pendukung Keputusan 🎓")
-st.subheader("Pemilihan Platform Education Terbaik Menggunakan Metode SAW")
+st.subheader("Audit Course dan Platform _E-Learning_ dengan Metode SAW")
 
 top_left, top_mid1, top_mid2, top_mid3, top_right = st.columns(
     [1.15, 1.15, 1.15, 1.15, 1.15], gap="medium"

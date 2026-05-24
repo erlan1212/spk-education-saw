@@ -42,11 +42,13 @@
 		background: #a15a3d;
 		border-right: 0;
 	}
-
 	[data-testid="stSidebar"] * {
 		color: #fff6de;
 	}
-
+	/* Select Category */
+	[data-testid="stSidebar"] div[data-baseweb="select"] {
+		cursor: pointer;
+	}
 	[data-testid="stSidebar"] div[data-baseweb="select"] * {
 		color: #7c4a03 !important;
 	}
@@ -168,6 +170,10 @@
 		> div[data-testid="stMarkdownContainer"] {
 		color: #a15a3d !important;
 		font-weight: 800 !important;
+	}
+
+	button[data-baseweb="tab"] p {
+		font-weight: 450;
 	}
 
 	div[data-baseweb="tab-highlight"] {
