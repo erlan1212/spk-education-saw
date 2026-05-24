@@ -2,11 +2,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import base64
 from datetime import datetime
 
 st.set_page_config(
-    page_title="SPK Education | SAW",
+    page_title="SPK Course Audit | SAW",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
