@@ -19,4 +19,4 @@ Sistem Pendukung Keputusan pemilihan platform dan course education terbaik mengg
 
 ## Run
 ```bash
-streamlit run app.py
+streamlit run main.py
