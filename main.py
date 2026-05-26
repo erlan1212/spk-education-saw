@@ -13,21 +13,24 @@ st.set_page_config(
 
 # CSS Section
 with open("style/style.html", "r", encoding="utf-8") as f:
-    st.html(f.read())
+    st.markdown(f.read(), unsafe_allow_html=True)
 
 
-# ==== Helpers ====
+# SECTION Loading Data
+# Buat Ngecache Data
 @st.cache_data
 def load_data(path: str) -> pd.DataFrame:
-
+    # Ngeread CSV
     df = pd.read_csv(path)
 
-    # Clean column names
+    # Clean column name from sapacing or someth
     df.columns = [c.strip() for c in df.columns]
 
-    # Remove duplicate data
+    # Ngilangin data duplikat
     df = df.drop_duplicates()
+    df = df.drop_duplicates(subset=["Course_ID"], keep="last")
 
+    # Yang perlu jadi numeric aja
     # Convert numeric columns
     numeric_cols = [
         "Duration (hours)",
@@ -40,7 +43,7 @@ def load_data(path: str) -> pd.DataFrame:
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Remove missing values
+    # Remove the misssing values NaN
     df = df.dropna()
 
     # Reset index
@@ -49,20 +52,37 @@ def load_data(path: str) -> pd.DataFrame:
     return df
 
 
+# !SECTION
+
+
+# SECTION Normalisasi Bobot
 def normalize_benefit(series: pd.Series) -> pd.Series:
+    # Ngubah data angka menjadi float
     s = series.astype(float)
+
+    # Fenomena kalau misal nanti semua kita jadikan wahidun
     if np.isclose(s.max(), s.min()):
         return pd.Series(np.ones(len(s)), index=s.index)
+
+    # Kalau endak ya seperti biasa lah kita vektorisasi
     return (s - s.min()) / (s.max() - s.min())
 
 
+# Normalisasi Cost Plek ketiplek
 def normalize_cost(series: pd.Series) -> pd.Series:
     s = series.astype(float)
     if np.isclose(s.max(), s.min()):
         return pd.Series(np.ones(len(s)), index=s.index)
+
+    # data yang paling kecil yang dicari
     return (s.max() - s) / (s.max() - s.min())
 
 
+# !SECTION
+
+
+# Label per ranking
+# FIXME badge belum jalan
 def make_rank_label(rank: int) -> tuple[str, str]:
     if rank == 1:
         return "Terbaik", "badge-best"
@@ -73,6 +93,7 @@ def make_rank_label(rank: int) -> tuple[str, str]:
     return "Terakhir", "badge-last"
 
 
+# Ngeformat tampilan angka
 def fmt_num(x, digits=4):
     try:
         return f"{x:.{digits}f}"
@@ -80,12 +101,15 @@ def fmt_num(x, digits=4):
         return str(x)
 
 
+# Metric Card sebagai dashboard
 def metric_card(label, value, foot, icon=None):
+    # Icon Gede
     icon_html = (
         f"<div style='font-size:1.8rem;margin-bottom:0.2rem'>{icon}</div>"
         if icon
         else ""
     )
+    # Isi Matricsnya
     st.markdown(
         f"""
         <div class="metric-card">
@@ -99,10 +123,12 @@ def metric_card(label, value, foot, icon=None):
     )
 
 
+# Ngambil Waktu
 def current_timestamp():
     return datetime.now().strftime("%d %b %Y, %H:%M")
 
 
+# Nge Groupby Per Platform
 def aggregate_platforms(df: pd.DataFrame) -> pd.DataFrame:
     agg = df.groupby("Platform", as_index=False).agg(
         Total_Course=("Course_ID", "count"),
@@ -116,12 +142,15 @@ def aggregate_platforms(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_saw(platform_df: pd.DataFrame, weights: dict) -> pd.DataFrame:
+    # Copy Semuah
     out = platform_df.copy()
 
     # Normalisasi
+    # Benefit
     out["n_rating"] = normalize_benefit(out["Avg_Rating"])
     out["n_completion"] = normalize_benefit(out["Avg_Completion"])
     out["n_enrolled"] = normalize_benefit(out["Avg_Enrolled"])
+    # Cost
     out["n_price"] = normalize_cost(out["Avg_Price"])
     out["n_duration"] = normalize_cost(out["Avg_Duration"])
 
@@ -130,6 +159,7 @@ def compute_saw(platform_df: pd.DataFrame, weights: dict) -> pd.DataFrame:
     raw_sum = raw.sum() if raw.sum() != 0 else 1.0
     w = {k: v / raw_sum for k, v in weights.items()}
 
+    # Weights nanti label keynya ada dibawah
     out["Skor_SAW"] = (
         out["n_rating"] * w["Rating"]
         + out["n_completion"] * w["Completion"]
@@ -147,11 +177,11 @@ def compute_saw(platform_df: pd.DataFrame, weights: dict) -> pd.DataFrame:
     return out
 
 
-# ==== Load ====
+# Load Data CSV
 DATA_PATH = "data/online_courses_uses.csv"
 df = load_data(DATA_PATH)
 
-# ==== Sidebar ====
+# Sidebar
 with st.sidebar:
     st.markdown(
         """
@@ -166,6 +196,7 @@ with st.sidebar:
     categories = ["Semua"] + sorted(df["Category"].dropna().unique().tolist())
     selected_category = st.selectbox("Kategori kursus", categories, index=0)
 
+    # Slider-Slideran
     st.caption("Data akan dihitung ulang berdasarkan filter kategori yang dipilih.")
 
     st.subheader("Pengaturan Bobot Kriteria")
@@ -180,7 +211,7 @@ with st.sidebar:
     total_bobot = w_rating + w_completion + w_enrolled + w_price + w_duration
     st.info(f"Total bobot input: {total_bobot}%")
 
-    # ===== VALIDASI TOTAL BOBOT =====
+    # Validasi Bobot
     if total_bobot > 100:
         st.warning(
             "⚠️ Total bobot melebihi 100%. " "Bobot tetap akan dinormalisasi otomatis."
@@ -209,12 +240,12 @@ with st.sidebar:
     st.markdown("---")
     st.caption(f"Last updated: {current_timestamp()}")
 
-# ==== Filtering ====
+# Filtering
 filtered_df = df.copy()
 if selected_category != "Semua":
     filtered_df = filtered_df[filtered_df["Category"] == selected_category].copy()
 
-# ===== VALIDASI DATA =====
+# GUI Validasi Data
 # Validasi dataset kosong
 if filtered_df.empty:
     st.error("❌ Data tidak ditemukan pada kategori yang dipilih.")
@@ -279,6 +310,7 @@ if (filtered_df["Price ($)"] == 0).any():
     st.info("ℹ️ Terdapat course gratis dengan harga 0.")
 
 platform_df = aggregate_platforms(filtered_df)
+# Kalau ganti ini janlup di compute SAW diganti bos
 weights = {
     "Rating": w_rating,
     "Completion": w_completion,
@@ -286,15 +318,18 @@ weights = {
     "Price": w_price,
     "Duration": w_duration,
 }
+# Penentuan Platform paling luayakkkk
 ranking_df = compute_saw(platform_df, weights)
 
 best_platform = ranking_df.iloc[0]["Platform"] if len(ranking_df) else "-"
 best_score = ranking_df.iloc[0]["Skor_SAW"] if len(ranking_df) else 0
 
-# ==== Header ====
-st.title("Sistem Pendukung Keputusan 🎓")
+# SECTION Header Page
+# FIXME diapus aja ntar
+st.title("🎓 Sistem Pendukung Keputusan ")
 st.subheader("Audit Course dan Platform _E-Learning_ dengan Metode SAW")
 
+# Metrics Page
 top_left, top_mid1, top_mid2, top_mid3, top_right = st.columns(
     [1.15, 1.15, 1.15, 1.15, 1.15], gap="medium"
 )
@@ -334,6 +369,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
         "Visualisasi",
     ]
 )
+
+# !SECTION
 
 # ==== Ringkasan ====
 with tab1:
