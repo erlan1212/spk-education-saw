@@ -513,8 +513,96 @@ with tab4:
     }
     calc_df = calc_df.rename(columns=rename_map)
     for col in calc_df.columns[1:]:
-        calc_df[col] = calc_df[col].map(lambda x: f"{x:.4f}")
+        calc_df[col] = calc_df[col].map(fmt_num)
     st.dataframe(calc_df, use_container_width=True, hide_index=True)
+
+    st.markdown("### Perhitungan SAW (Per Course)")
+
+    calc_course_df = filtered_df.copy()
+
+    # Normalisasi
+    calc_course_df["n_rating"] = normalize_benefit(calc_course_df["Rating (out of 5)"])
+    calc_course_df["n_completion"] = normalize_benefit(
+        calc_course_df["Completion_Rate (%)"]
+    )
+    calc_course_df["n_enrolled"] = normalize_benefit(
+        calc_course_df["Enrolled_Students"]
+    )
+    calc_course_df["n_price"] = normalize_cost(calc_course_df["Price ($)"])
+    calc_course_df["n_duration"] = normalize_cost(calc_course_df["Duration (hours)"])
+
+    # Setup rasio bobot
+    total = total_bobot if total_bobot != 0 else 1
+    wr, wc, we, wp, wd = (
+        w_rating / total,
+        w_completion / total,
+        w_enrolled / total,
+        w_price / total,
+        w_duration / total,
+    )
+
+    # Eksekusi Vektor SAW
+    calc_course_df["Skor_SAW"] = (
+        calc_course_df["n_rating"] * wr
+        + calc_course_df["n_completion"] * wc
+        + calc_course_df["n_enrolled"] * we
+        + calc_course_df["n_price"] * wp
+        + calc_course_df["n_duration"] * wd
+    )
+
+    # Sorting berdasar skor
+    calc_course_df = calc_course_df.sort_values(
+        by="Skor_SAW", ascending=False
+    ).reset_index(drop=True)
+
+    # Setup View Dataframe
+    display_cols_course = [
+        "Course_Name",
+        "Platform",
+        "Rating (out of 5)",
+        "Completion_Rate (%)",
+        "Enrolled_Students",
+        "Price ($)",
+        "Duration (hours)",
+        "n_rating",
+        "n_completion",
+        "n_enrolled",
+        "n_price",
+        "n_duration",
+        "Skor_SAW",
+    ]
+    calc_view_course = calc_course_df[display_cols_course].copy()
+
+    rename_map_course = {
+        "Course_Name": "Course",
+        "Rating (out of 5)": "Rating",
+        "Completion_Rate (%)": "Completion",
+        "Enrolled_Students": "Enrolled",
+        "Price ($)": "Price",
+        "Duration (hours)": "Duration",
+        "n_rating": "N Rating",
+        "n_completion": "N Completion",
+        "n_enrolled": "N Enrolled",
+        "n_price": "N Price",
+        "n_duration": "N Duration",
+        "Skor_SAW": "Skor SAW",
+    }
+    calc_view_course = calc_view_course.rename(columns=rename_map_course)
+
+    # Yang perlu di format
+    format_cols = [
+        "N Rating",
+        "N Completion",
+        "N Enrolled",
+        "N Price",
+        "N Duration",
+        "Skor SAW",
+    ]
+    for col in format_cols:
+        calc_view_course[col] = calc_view_course[col].map(fmt_num)
+
+    st.dataframe(calc_view_course, use_container_width=True, hide_index=True)
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==== Ranking =====
